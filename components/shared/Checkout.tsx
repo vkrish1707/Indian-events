@@ -29,7 +29,12 @@ const Checkout = ({ event, userId }: { event: IEvent, userId: string }) => {
       buyerId: userId
     }
 
-    await checkoutOrder(order);
+    const message = `Hello, I would like to purchase a ticket for ${event.title}.`;
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+  
+    // Open WhatsApp
+    window.open(whatsappUrl, '_blank');
   }
 
   return (

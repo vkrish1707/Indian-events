@@ -4,6 +4,7 @@ import { getEventById, getRelatedEventsByCategory } from '@/lib/actions/event.ac
 import { formatDateTime } from '@/lib/utils';
 import { SearchParamProps } from '@/types'
 import Image from 'next/image';
+import eventImage from '../../../../public/assets/images/event-ind.jpeg';
 
 const EventDetails = async ({ params: { id }, searchParams }: SearchParamProps) => {
   const event = await getEventById(id);
@@ -19,7 +20,7 @@ const EventDetails = async ({ params: { id }, searchParams }: SearchParamProps) 
     <section className="flex justify-center bg-primary-50 bg-dotted-pattern bg-contain">
       <div className="grid grid-cols-1 md:grid-cols-2 2xl:max-w-7xl">
         <Image 
-          src={event.imageUrl}
+          src={eventImage}
           alt="hero image"
           width={1000}
           height={1000}
@@ -77,21 +78,6 @@ const EventDetails = async ({ params: { id }, searchParams }: SearchParamProps) 
           </div>
         </div>
       </div>
-    </section>
-
-    {/* EVENTS with the same category */}
-    <section className="wrapper my-8 flex flex-col gap-8 md:gap-12">
-      <h2 className="h2-bold">Related Events</h2>
-
-      <Collection 
-          data={relatedEvents?.data}
-          emptyTitle="No Events Found"
-          emptyStateSubtext="Come back later"
-          collectionType="All_Events"
-          limit={3}
-          page={searchParams.page as string}
-          totalPages={relatedEvents?.totalPages}
-        />
     </section>
     </>
   )
