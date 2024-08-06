@@ -1,0 +1,50 @@
+import React, { useState } from 'react';
+import ModalComponent from './ModalComponent';
+
+const CustomCellRenderer = (props) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentData, setCurrentData] = useState(null);
+  const [cellData, setCellData] = useState(props.value);
+
+  const handleDoubleClick = (data) => {
+    setCurrentData(data);
+    setIsModalOpen(true);
+  };
+
+  const handleSave = (newData) => {
+    const updatedData = [...cellData];
+    if (currentData) {
+      const index = updatedData.findIndex(item => item.value === currentData.value);
+      if (index !== -1) {
+        updatedData[index] = newData;
+      }
+    } else {
+      updatedData.push(newData);
+    }
+    setCellData(updatedData);
+    props.setValue(updatedData); // Update AG Grid cell value
+    setIsModalOpen(false);
+  };
+
+  return (
+    <div>
+      {cellData.map((item, index) => (
+        <div key={index} onDoubleClick={() => handleDoubleClick(item)}>
+          {item.value}
+        </div>
+      ))}
+      <button onClick={() => handleDoubleClick(null)}>Add New</button>
+      {isModalOpen && (
+        <ModalComponent
+          data={currentData}
+          onSave={handleSave}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default CustomCellRenderer;
+
+
