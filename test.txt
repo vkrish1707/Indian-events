@@ -1,68 +1,92 @@
 import React, { useState, useEffect } from 'react';
-import ModalComponent from './ModalComponent';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  TextField,
+  Typography
+} from '@mui/material';
 
-const CustomCellRenderer = (props) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentData, setCurrentData] = useState(null);
-  const [cellData, setCellData] = useState(props.value || []);
+const ModalComponent = ({ data, onSave, onDelete, onClose }) => {
+  const [value, setValue] = useState('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
-    setCellData(props.value || []);
-    console.log('Props value updated:', props.value);
-  }, [props.value]);
-
-  const handleDoubleClick = (data) => {
-    setCurrentData(data);
-    setIsModalOpen(true);
-  };
-
-  const handleSave = (newData) => {
-    let updatedData;
-    if (currentData) {
-      updatedData = cellData.map(item => 
-        item.value === currentData.value ? newData : item
-      );
+    if (data) {
+      setValue(data.value);
     } else {
-      updatedData = [...cellData, newData];
+      setValue('');
     }
+  }, [data]);
 
-    console.log('Updated data:', updatedData);
-    props.setValue(updatedData); // Update AG Grid cell value
-    props.handleUpdateData(props.node.rowIndex, updatedData); // Update Parent component state
-    setIsModalOpen(false);
+  const handleSave = () => {
+    onSave({ value });
   };
 
-  const getColor = (color) => {
-    if (color.startsWith("theme")) {
-      return colorMap[color] || { background: "#FFFFFF", text: "#000000" };
-    } else if (color) {
-      return { background: `${color}`, text: "#000000" };
-    }
-    return colorMap.undefined;
+  const handleDelete = () => {
+    onDelete(data);
+  };
+
+  const openDeleteDialog = () => {
+    setIsDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setIsDeleteDialogOpen(false);
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", height: "200px", boxSizing: "border-box" }}>
-      {cellData.map((item, index) => {
-        const colors = getColor(item?.color);
-        console.log('Rendering item:', item);
-
-        return (
-          <div key={index} style={{ backgroundColor: colors.background, color: colors.text, width: "100%", height: `calc(100% / ${cellData.length})`, border: "1px solid white", boxSizing: "border-box", overflow: "hidden", whiteSpace: "pre-wrap" }} onDoubleClick={() => handleDoubleClick(item)}>
-            {item.value}
-          </div>
-        );
-      })}
-      <button onClick={() => handleDoubleClick(null)}>Add New</button>
-      {isModalOpen && (
-        <ModalComponent
-          data={currentData}
-          onSave={handleSave}
-          onClose={() => setIsModalOpen(false)}
-        />
+    <div>
+      <Typography variant="h6">{data ? 'Edit Data' : 'Add New Data'}</Typography>
+      <TextField
+        fullWidth
+        label="Value"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+      <Button variant="contained" color="primary" onClick={handleSave} style={{ marginTop: 10 }}>
+        Save
+      </Button>
+      {data && (
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={openDeleteDialog}
+          style={{ marginTop: 10, marginLeft: 10 }}
+        >
+          Delete
+        </Button>
       )}
+      <Button variant="outlined" onClick={onClose} style={{ marginTop: 10, marginLeft: 10 }}>
+        Close
+      </Button>
+
+      <Dialog
+        open={isDeleteDialogOpen}
+        onClose={closeDeleteDialog}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">{"Confirm Delete"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete this item?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteDialog} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="secondary" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
 
-export default CustomCellRenderer;
+export default ModalComponent;
