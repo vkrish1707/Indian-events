@@ -1,21 +1,68 @@
-  const handleUpdateData = (rowIndex, newData) => {
-    setAllCellsData(prevData => {
-      const updatedData = [...prevData];
-      updatedData[rowIndex].data = newData;
-      return updatedData;
-    });
+import React, { useState, useEffect } from 'react';
+import ModalComponent from './ModalComponent';
+
+const CustomCellRenderer = (props) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentData, setCurrentData] = useState(null);
+  const [cellData, setCellData] = useState(props.value || []);
+
+  useEffect(() => {
+    setCellData(props.value || []);
+    console.log('Props value updated:', props.value);
+  }, [props.value]);
+
+  const handleDoubleClick = (data) => {
+    setCurrentData(data);
+    setIsModalOpen(true);
   };
 
-
-  const columnDefs = [
-    {
-      headerName: 'Custom Cell',
-      field: 'data',
-      cellRenderer: 'customCellRenderer',
-      cellRendererParams: {
-        handleUpdateData: handleUpdateData
-      }
+  const handleSave = (newData) => {
+    let updatedData;
+    if (currentData) {
+      updatedData = cellData.map(item => 
+        item.value === currentData.value ? newData : item
+      );
+    } else {
+      updatedData = [...cellData, newData];
     }
-  ];
 
-props.handleUpdateData(props.node.rowIndex, updatedData);
+    console.log('Updated data:', updatedData);
+    props.setValue(updatedData); // Update AG Grid cell value
+    props.handleUpdateData(props.node.rowIndex, updatedData); // Update Parent component state
+    setIsModalOpen(false);
+  };
+
+  const getColor = (color) => {
+    if (color.startsWith("theme")) {
+      return colorMap[color] || { background: "#FFFFFF", text: "#000000" };
+    } else if (color) {
+      return { background: `${color}`, text: "#000000" };
+    }
+    return colorMap.undefined;
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", height: "200px", boxSizing: "border-box" }}>
+      {cellData.map((item, index) => {
+        const colors = getColor(item?.color);
+        console.log('Rendering item:', item);
+
+        return (
+          <div key={index} style={{ backgroundColor: colors.background, color: colors.text, width: "100%", height: `calc(100% / ${cellData.length})`, border: "1px solid white", boxSizing: "border-box", overflow: "hidden", whiteSpace: "pre-wrap" }} onDoubleClick={() => handleDoubleClick(item)}>
+            {item.value}
+          </div>
+        );
+      })}
+      <button onClick={() => handleDoubleClick(null)}>Add New</button>
+      {isModalOpen && (
+        <ModalComponent
+          data={currentData}
+          onSave={handleSave}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default CustomCellRenderer;
