@@ -1,92 +1,81 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  TextField,
-  Typography
-} from '@mui/material';
+import React, { useState } from 'react';
+import { AgGridReact } from 'ag-grid-react';
+import CustomCellRenderer from './CustomCellRenderer';
+import HeatmapCellRenderer from './HeatmapCellRenderer';
+import { Button } from '@mui/material';
 
-const ModalComponent = ({ data, onSave, onDelete, onClose }) => {
-  const [value, setValue] = useState('');
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+const IPReviews = () => {
+  const [allCellsData, setAllCellsData] = useState([
+    { id: 1, data: [{ value: 'Initial value 1' }, { value: 'Initial value 2' }] },
+    { id: 2, data: [{ value: 'Initial value 3' }, { value: 'Initial value 4' }] }
+  ]);
+  const [isHeatmap, setIsHeatmap] = useState(false);
 
-  useEffect(() => {
-    if (data) {
-      setValue(data.value);
-    } else {
-      setValue('');
+  const handleUpdateData = (rowIndex, newData) => {
+    setAllCellsData(prevData => {
+      const updatedData = [...prevData];
+      updatedData[rowIndex].data = newData;
+      return updatedData;
+    });
+  };
+
+  const handleDeleteData = (rowIndex, item) => {
+    setAllCellsData(prevData => {
+      const updatedData = [...prevData];
+      updatedData[rowIndex].data = updatedData[rowIndex].data.filter(d => d.value !== item.value);
+      return updatedData;
+    });
+  };
+
+  const columnDefs = [
+    {
+      headerName: 'Custom Cell',
+      field: 'data',
+      cellRenderer: isHeatmap ? 'heatmapCellRenderer' : 'customCellRenderer',
+      cellRendererParams: {
+        handleUpdateData: handleUpdateData,
+        handleDeleteData: handleDeleteData
+      }
     }
-  }, [data]);
+  ];
 
-  const handleSave = () => {
-    onSave({ value });
-  };
-
-  const handleDelete = () => {
-    onDelete(data);
-  };
-
-  const openDeleteDialog = () => {
-    setIsDeleteDialogOpen(true);
-  };
-
-  const closeDeleteDialog = () => {
-    setIsDeleteDialogOpen(false);
+  const handleButtonClick = (isHeatmapSelected) => {
+    setIsHeatmap(isHeatmapSelected);
   };
 
   return (
     <div>
-      <Typography variant="h6">{data ? 'Edit Data' : 'Add New Data'}</Typography>
-      <TextField
-        fullWidth
-        label="Value"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-      />
-      <Button variant="contained" color="primary" onClick={handleSave} style={{ marginTop: 10 }}>
-        Save
-      </Button>
-      {data && (
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={openDeleteDialog}
-          style={{ marginTop: 10, marginLeft: 10 }}
+      <div style={{ marginBottom: 10 }}>
+        <Button 
+          variant="contained" 
+          color={!isHeatmap ? "primary" : "default"} 
+          onClick={() => handleButtonClick(false)} 
+          disabled={!isHeatmap}
         >
-          Delete
+          Default View
         </Button>
-      )}
-      <Button variant="outlined" onClick={onClose} style={{ marginTop: 10, marginLeft: 10 }}>
-        Close
-      </Button>
-
-      <Dialog
-        open={isDeleteDialogOpen}
-        onClose={closeDeleteDialog}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
-      >
-        <DialogTitle id="alert-dialog-title">{"Confirm Delete"}</DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            Are you sure you want to delete this item?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeDeleteDialog} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleDelete} color="secondary" autoFocus>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Button 
+          variant="contained" 
+          color={isHeatmap ? "primary" : "default"} 
+          onClick={() => handleButtonClick(true)} 
+          disabled={isHeatmap}
+          style={{ marginLeft: 10 }}
+        >
+          Heatmap View
+        </Button>
+      </div>
+      <div className="ag-theme-alpine" style={{ height: 400, width: 600 }}>
+        <AgGridReact
+          rowData={allCellsData}
+          columnDefs={columnDefs}
+          frameworkComponents={{
+            customCellRenderer: CustomCellRenderer,
+            heatmapCellRenderer: HeatmapCellRenderer
+          }}
+        />
+      </div>
     </div>
   );
 };
 
-export default ModalComponent;
+export default IPReviews;
