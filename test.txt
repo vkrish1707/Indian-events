@@ -1,81 +1,74 @@
-import React, { useState } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import CustomCellRenderer from './CustomCellRenderer';
-import HeatmapCellRenderer from './HeatmapCellRenderer';
-import { Button } from '@mui/material';
+const express = require("express");
+const mongoose = require("mongoose");
 
-const IPReviews = () => {
-  const [allCellsData, setAllCellsData] = useState([
-    { id: 1, data: [{ value: 'Initial value 1' }, { value: 'Initial value 2' }] },
-    { id: 2, data: [{ value: 'Initial value 3' }, { value: 'Initial value 4' }] }
-  ]);
-  const [isHeatmap, setIsHeatmap] = useState(false);
+const router = express.Router();
 
-  const handleUpdateData = (rowIndex, newData) => {
-    setAllCellsData(prevData => {
-      const updatedData = [...prevData];
-      updatedData[rowIndex].data = newData;
-      return updatedData;
-    });
-  };
+// MongoDB Models
+const Collection1 = mongoose.model("Collection1", new mongoose.Schema({
+  siDieId: String,
+  milestone: String,
+  isLive: Boolean,
+  POR: String // To be updated
+}));
 
-  const handleDeleteData = (rowIndex, item) => {
-    setAllCellsData(prevData => {
-      const updatedData = [...prevData];
-      updatedData[rowIndex].data = updatedData[rowIndex].data.filter(d => d.value !== item.value);
-      return updatedData;
-    });
-  };
+const Collection2 = mongoose.model("Collection2", new mongoose.Schema({
+  siDieId: String,
+  milestone: String,
+  reportDate: Date,
+  POR: String // Source of update
+}));
 
-  const columnDefs = [
-    {
-      headerName: 'Custom Cell',
-      field: 'data',
-      cellRenderer: isHeatmap ? 'heatmapCellRenderer' : 'customCellRenderer',
-      cellRendererParams: {
-        handleUpdateData: handleUpdateData,
-        handleDeleteData: handleDeleteData
-      }
+// 📌 Optimized API to Update POR in Collection1 from Collection2
+router.put("/update-por", async (req, res) => {
+  try {
+    // Step 1: Fetch all live records from Collection1
+    const liveDocuments = await Collection1.find({ isLive: true });
+
+    if (!liveDocuments.length) {
+      return res.status(404).json({ message: "No live documents found" });
     }
-  ];
 
-  const handleButtonClick = (isHeatmapSelected) => {
-    setIsHeatmap(isHeatmapSelected);
-  };
+    // Step 2: Extract unique (siDieId, milestone) pairs
+    const queryConditions = liveDocuments.map(doc => ({
+      siDieId: doc.siDieId,
+      milestone: doc.milestone
+    }));
 
-  return (
-    <div>
-      <div style={{ marginBottom: 10 }}>
-        <Button 
-          variant="contained" 
-          color={!isHeatmap ? "primary" : "default"} 
-          onClick={() => handleButtonClick(false)} 
-          disabled={!isHeatmap}
-        >
-          Default View
-        </Button>
-        <Button 
-          variant="contained" 
-          color={isHeatmap ? "primary" : "default"} 
-          onClick={() => handleButtonClick(true)} 
-          disabled={isHeatmap}
-          style={{ marginLeft: 10 }}
-        >
-          Heatmap View
-        </Button>
-      </div>
-      <div className="ag-theme-alpine" style={{ height: 400, width: 600 }}>
-        <AgGridReact
-          rowData={allCellsData}
-          columnDefs={columnDefs}
-          frameworkComponents={{
-            customCellRenderer: CustomCellRenderer,
-            heatmapCellRenderer: HeatmapCellRenderer
-          }}
-        />
-      </div>
-    </div>
-  );
-};
+    // Step 3: Fetch all matching records from Collection2 in ONE query
+    const latestDocuments = await Collection2.aggregate([
+      { $match: { $or: queryConditions } },  // Fetch only matching siDieId & milestone pairs
+      { $sort: { reportDate: -1 } },         // Sort by latest reportDate
+      {
+        $group: {
+          _id: { siDieId: "$siDieId", milestone: "$milestone" }, // Group by siDieId + milestone
+          latestPOR: { $first: "$POR" }   // Take the first (latest) POR per group
+        }
+      }
+    ]);
 
-export default IPReviews;
+    if (!latestDocuments.length) {
+      return res.status(404).json({ message: "No matching POR records found" });
+    }
+
+    // Step 4: Prepare bulk update operations
+    const bulkUpdates = latestDocuments.map(doc => ({
+      updateMany: {
+        filter: { siDieId: doc._id.siDieId, milestone: doc._id.milestone },
+        update: { $set: { POR: doc.latestPOR } }
+      }
+    }));
+
+    // Step 5: Execute bulk update in Collection1
+    if (bulkUpdates.length) {
+      await Collection1.bulkWrite(bulkUpdates);
+    }
+
+    res.status(200).json({ message: "POR values updated successfully" });
+
+  } catch (error) {
+    console.error("Error updating POR:", error);
+    res.status(500).json({ message: "Internal Server Error", error });
+  }
+});
+
+module.exports = router;
